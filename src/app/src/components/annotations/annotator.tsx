@@ -49,6 +49,7 @@ import FileModal from "./filemodal";
 import AnnotatorSettings from "./utils/annotatorsettings";
 import FormatTimerSeconds from "./utils/timer";
 import { RegisteredModel } from "./model";
+import { getFrameItemCounts, ImageAnalyticsBar, NoData, UnrecognizedDataError, VideoAnalyticsBar } from "./analyticsbar";
 
 type Point = [number, number];
 type MapType = L.DrawMap;
@@ -148,6 +149,8 @@ interface AnnotatorState {
     opacity: number;
   };
   currAnnotationPlaybackId: number;
+  isAnalyticsMode: boolean;
+  analyticsData?: any
 }
 
 /**
@@ -165,8 +168,8 @@ interface AnnotationLayer extends L.Layer {
  */
 @HotkeysTarget
 export default class Annotator extends Component<
-  AnnotatorProps,
-  AnnotatorState
+AnnotatorProps,
+AnnotatorState
 > {
   /* Class Variables */
   public map!: MapType;
@@ -209,6 +212,7 @@ export default class Annotator extends Component<
     super(props);
 
     this.state = {
+      isAnalyticsMode: false,
       currentAssetAnnotations: [],
       userEditState: "None",
       changesMade: false,
@@ -762,8 +766,17 @@ export default class Annotator extends Component<
         "json"
       )
         .then(response => {
-          if (this.currentAsset.url === asset.url && singleAnalysis)
+          if (this.currentAsset.url === asset.url && singleAnalysis) {
+            this.setState({
+              analyticsData: {
+                currentDataType: asset.type,
+                image: {
+                  data: response.data
+                }
+              }
+            })
             this.updateAnnotations(response.data);
+          }
         })
         .catch(error => {
           let message = "Failed to predict image.";
@@ -807,6 +820,16 @@ export default class Annotator extends Component<
               const key = Math.floor(
                 quotient * secondsInterval * 1000
               ).toString();
+
+              this.setState({
+                analyticsData: {
+                  currentDataType: asset.type,
+                  video: {
+                    data: response.data,
+                    frameKey: key
+                  }
+                }
+              })
 
               if (response.data.frames[key]) {
                 this.updateAnnotations(response.data.frames[key]);
@@ -1100,11 +1123,11 @@ export default class Annotator extends Component<
           (this.state.filterArr.length === 0 ||
             /* Check if tag is present in filter (CASE-INSENSITIVE) */
             this.state.showSelected ===
-              this.state.filterArr.some(filter =>
-                invertedProjectTags[annotation.options.annotationTag]
-                  .toLowerCase()
-                  .includes(filter.toLowerCase())
-              )) &&
+            this.state.filterArr.some(filter =>
+              invertedProjectTags[annotation.options.annotationTag]
+                .toLowerCase()
+                .includes(filter.toLowerCase())
+            )) &&
           annotation.options.confidence >= this.state.confidence
       )
       .forEach((confidentAnnotation: any) => {
@@ -1573,8 +1596,31 @@ export default class Annotator extends Component<
             <Card
               className={[isCollapsed, "image-bar"].join("")}
               id={"image-bar"}
-            >
-              <ImageBar
+            >{this.state.isAnalyticsMode ?
+              this.state?.analyticsData == null ?
+                <NoData />
+                : this.state?.analyticsData?.currentDataType === 'video' ?
+                  <VideoAnalyticsBar
+                    currentFrameKey={this.state.analyticsData.video.frameKey}
+                    frameItemCounts={
+                      getFrameItemCounts({
+                        tags: this.state.tagInfo.tags,
+                        confidenceThreshold: this.state.confidence,
+                        frames: this.state.analyticsData.video.data.frames
+                      })}
+                    tagIdMap={this.state.tagInfo.tags}
+                  />
+                  : this.state?.analyticsData?.currentDataType === 'image' ?
+                    <ImageAnalyticsBar
+                      data={getFrameItemCounts({
+                        tags: this.state.tagInfo.tags,
+                        confidenceThreshold: this.state.confidence,
+                        frames: [this.state.analyticsData.image.data]
+                      })[0].itemCounts /* TODO: getFrameItemCounts should be refactored for better API */}
+                      tagIdMap={this.state.tagInfo.tags}
+                    />
+                    : <UnrecognizedDataError dataType={this.state?.analyticsData?.currentDataType} />
+              : <ImageBar
                 ref={ref => {
                   this.imagebarRef = ref;
                 }}
@@ -1582,7 +1628,7 @@ export default class Annotator extends Component<
                 assetList={visibleAssets}
                 callbacks={{ selectAssetCallback: this.selectAsset }}
                 {...this.props}
-              />
+              />}
             </Card>
           </div>
 
@@ -1623,6 +1669,12 @@ export default class Annotator extends Component<
                   />
                 </div>
               ) : null}
+              <div className="annotator-toggle-analytics-button">
+                <Button
+                  icon={this.state.isAnalyticsMode ? "timeline-line-chart" : "media"}
+                  onClick={() => this.setState({ isAnalyticsMode: !this.state.isAnalyticsMode })}
+                />
+              </div>
             </Card>
           </div>
           <div className={"annotator-controls"}>

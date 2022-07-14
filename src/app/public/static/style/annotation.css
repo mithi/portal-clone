@@ -253,6 +253,14 @@
   top: calc(100% - 40px);
 }
 
+.annotator-toggle-analytics-button {
+  position: absolute;
+  z-index: 100;
+  float: right;
+  left: calc(100% - 80px);
+  top: calc(100% - 40px);
+}
+
 .annotator-settings-card {
   padding: 20px 30px;
 }
@@ -282,6 +290,7 @@
   height: inherit;
   width: inherit;
   left: 0px !important;
+  background-color: red;
   margin-top: 10px;
   -webkit-tap-highlight-color: transparent;
 }
