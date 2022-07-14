@@ -149,7 +149,7 @@ interface AnnotatorState {
     opacity: number;
   };
   currAnnotationPlaybackId: number;
-  isAnalyticsMode: boolean;
+  bottomSidebarMode: 'image' | 'graph-1' | 'graph-2';
   analyticsData?: any
 }
 
@@ -212,7 +212,7 @@ AnnotatorState
     super(props);
 
     this.state = {
-      isAnalyticsMode: false,
+      bottomSidebarMode: 'image',
       currentAssetAnnotations: [],
       userEditState: "None",
       changesMade: false,
@@ -1558,6 +1558,9 @@ AnnotatorState
     );
   }
 
+  // timeline-bar-chart
+  // doughnut-chart
+  // 
   render(): JSX.Element {
     /* Prefix for Dynamic Styling of Collapsing Image List */
     const collapsedButtonTheme = this.props.useDarkTheme ? "" : "light-";
@@ -1596,11 +1599,13 @@ AnnotatorState
             <Card
               className={[isCollapsed, "image-bar"].join("")}
               id={"image-bar"}
-            >{this.state.isAnalyticsMode ?
+            >{this.state.bottomSidebarMode === 'graph-1' || this.state.bottomSidebarMode === 'graph-2' ?
               this.state?.analyticsData == null ?
                 <NoData />
                 : this.state?.analyticsData?.currentDataType === 'video' ?
                   <VideoAnalyticsBar
+                    tagIdMap={this.state.tagInfo.tags}
+                    graphType={this.state.bottomSidebarMode}
                     currentFrameKey={this.state.analyticsData.video.frameKey}
                     frameItemCounts={
                       getFrameItemCounts({
@@ -1608,22 +1613,28 @@ AnnotatorState
                         confidenceThreshold: this.state.confidence,
                         frames: this.state.analyticsData.video.data.frames
                       })}
-                    tagIdMap={this.state.tagInfo.tags}
+                    callback={(n: number) => {
+                      const videoElement = this.videoOverlay?.getElement();
+                      if (videoElement) {
+                        videoElement.currentTime = n / 1000
+                        videoElement.pause()
+                      }
+
+                    }}
                   />
                   : this.state?.analyticsData?.currentDataType === 'image' ?
                     <ImageAnalyticsBar
+                      tagIdMap={this.state.tagInfo.tags}
+                      graphType={this.state.bottomSidebarMode}
                       data={getFrameItemCounts({
                         tags: this.state.tagInfo.tags,
                         confidenceThreshold: this.state.confidence,
                         frames: [this.state.analyticsData.image.data]
                       })[0].itemCounts /* TODO: getFrameItemCounts should be refactored for better API */}
-                      tagIdMap={this.state.tagInfo.tags}
                     />
                     : <UnrecognizedDataError dataType={this.state?.analyticsData?.currentDataType} />
               : <ImageBar
-                ref={ref => {
-                  this.imagebarRef = ref;
-                }}
+                ref={ref => { this.imagebarRef = ref; }}
                 /* Only visible assets should be shown */
                 assetList={visibleAssets}
                 callbacks={{ selectAssetCallback: this.selectAsset }}
@@ -1671,8 +1682,19 @@ AnnotatorState
               ) : null}
               <div className="annotator-toggle-analytics-button">
                 <Button
-                  icon={this.state.isAnalyticsMode ? "timeline-line-chart" : "media"}
-                  onClick={() => this.setState({ isAnalyticsMode: !this.state.isAnalyticsMode })}
+                  icon={
+                    this.state.bottomSidebarMode === 'image' ? 'media' :
+                      this.state.analyticsData?.currentDataType === 'video' ?
+                        this.state.bottomSidebarMode === 'graph-1' ?
+                          "timeline-line-chart" : "timeline-area-chart"
+                        : this.state.bottomSidebarMode === 'graph-1' ? 'timeline-bar-chart' :
+                          'doughnut-chart'
+                  }
+                  onClick={() => this.setState({
+                    bottomSidebarMode: this.state.bottomSidebarMode === 'image' ?
+                      'graph-1' : this.state.bottomSidebarMode === 'graph-1' ?
+                        'graph-2' : 'image'
+                  })}
                 />
               </div>
             </Card>
