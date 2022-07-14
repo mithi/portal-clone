@@ -1571,6 +1571,13 @@ AnnotatorState
       this.isAssetVisible()
     );
 
+    const { bottomSidebarMode, confidence: confidenceThreshold, tagInfo: { tags } } = this.state
+    const isAnalyticsMode = bottomSidebarMode === 'graph-1' || bottomSidebarMode === 'graph-2'
+    const noData = this.state?.analyticsData == null
+    const analyticsType = this.state?.analyticsData?.currentDataType
+    const analyzeVideo = isAnalyticsMode && analyticsType === 'video'
+    const analyzeImage = isAnalyticsMode && analyticsType === 'image'
+
     return (
       <div>
         <Toaster {...this.state} ref={this.refHandlers.toaster} />
@@ -1599,47 +1606,46 @@ AnnotatorState
             <Card
               className={[isCollapsed, "image-bar"].join("")}
               id={"image-bar"}
-            >{this.state.bottomSidebarMode === 'graph-1' || this.state.bottomSidebarMode === 'graph-2' ?
-              this.state?.analyticsData == null ?
-                <NoData />
-                : this.state?.analyticsData?.currentDataType === 'video' ?
-                  <VideoAnalyticsBar
-                    tagIdMap={this.state.tagInfo.tags}
-                    graphType={this.state.bottomSidebarMode}
-                    currentFrameKey={this.state.analyticsData.video.frameKey}
-                    frameItemCounts={
-                      getFrameItemCounts({
-                        tags: this.state.tagInfo.tags,
-                        confidenceThreshold: this.state.confidence,
-                        frames: this.state.analyticsData.video.data.frames
-                      })}
-                    callback={(n: number) => {
-                      const videoElement = this.videoOverlay?.getElement();
-                      if (videoElement) {
-                        videoElement.currentTime = n / 1000
-                        videoElement.pause()
-                      }
-
-                    }}
-                  />
-                  : this.state?.analyticsData?.currentDataType === 'image' ?
-                    <ImageAnalyticsBar
-                      tagIdMap={this.state.tagInfo.tags}
-                      graphType={this.state.bottomSidebarMode}
-                      data={getFrameItemCounts({
-                        tags: this.state.tagInfo.tags,
-                        confidenceThreshold: this.state.confidence,
-                        frames: [this.state.analyticsData.image.data]
-                      })[0].itemCounts /* TODO: getFrameItemCounts should be refactored for better API */}
-                    />
-                    : <UnrecognizedDataError dataType={this.state?.analyticsData?.currentDataType} />
-              : <ImageBar
-                ref={ref => { this.imagebarRef = ref; }}
-                /* Only visible assets should be shown */
-                assetList={visibleAssets}
-                callbacks={{ selectAssetCallback: this.selectAsset }}
-                {...this.props}
+            >
+              {bottomSidebarMode === 'image' &&
+                (<ImageBar
+                  ref={ref => { this.imagebarRef = ref; }}
+                  /* Only visible assets should be shown */
+                  assetList={visibleAssets}
+                  callbacks={{ selectAssetCallback: this.selectAsset }}
+                  {...this.props}
+                />)
+              }
+              {isAnalyticsMode && noData && <NoData />}
+              {analyzeVideo && <VideoAnalyticsBar
+                tagIdMap={tags}
+                graphType={bottomSidebarMode}
+                currentFrameKey={this.state.analyticsData.video.frameKey}
+                frameItemCounts={
+                  getFrameItemCounts({
+                    tags,
+                    confidenceThreshold,
+                    frames: this.state.analyticsData.video.data.frames
+                  })}
+                callback={(n: number) => {
+                  const videoElement = this.videoOverlay?.getElement();
+                  if (videoElement) {
+                    videoElement.currentTime = n / 1000
+                    videoElement.pause()
+                  }
+                }}
               />}
+              {analyzeImage && <ImageAnalyticsBar
+                tagIdMap={tags}
+                graphType={bottomSidebarMode}
+                data={getFrameItemCounts({
+                  tags,
+                  confidenceThreshold,
+                  frames: [this.state.analyticsData.image.data]
+                })[0].itemCounts /* TODO: getFrameItemCounts should be refactored for better API */}
+              />}
+              {isAnalyticsMode && !noData && !analyzeImage && !analyzeVideo
+                && <UnrecognizedDataError dataType={analyticsType} />}
             </Card>
           </div>
 
@@ -1683,17 +1689,18 @@ AnnotatorState
               <div className="annotator-toggle-analytics-button">
                 <Button
                   icon={
-                    this.state.bottomSidebarMode === 'image' ? 'media' :
-                      this.state.analyticsData?.currentDataType === 'video' ?
-                        this.state.bottomSidebarMode === 'graph-1' ?
-                          "timeline-line-chart" : "timeline-area-chart"
-                        : this.state.bottomSidebarMode === 'graph-1' ? 'timeline-bar-chart' :
-                          'doughnut-chart'
+                    bottomSidebarMode === 'image' ? 'media'
+                      : analyticsType === 'video' ? bottomSidebarMode === 'graph-1'
+                        ? "timeline-line-chart" : "timeline-area-chart"
+                        : bottomSidebarMode === 'graph-1'
+                          ? 'timeline-bar-chart' : 'doughnut-chart'
                   }
                   onClick={() => this.setState({
-                    bottomSidebarMode: this.state.bottomSidebarMode === 'image' ?
-                      'graph-1' : this.state.bottomSidebarMode === 'graph-1' ?
-                        'graph-2' : 'image'
+                    // Note: you can also use modulo to cycle between state, but since we only have 3 states, I think this is ok for now
+                    bottomSidebarMode:
+                      bottomSidebarMode === 'image' ? 'graph-1'
+                        : bottomSidebarMode === 'graph-1' ? 'graph-2'
+                          : 'image'
                   })}
                 />
               </div>
