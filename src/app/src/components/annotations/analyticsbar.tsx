@@ -12,7 +12,12 @@ import {
   Line,
   TooltipProps,
   ReferenceLine,
-  XAxis
+  XAxis,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell
 } from "recharts";
 import {
   ValueType,
@@ -106,7 +111,7 @@ const CustomTooltip = ({
               {item.name} : {item.value}
             </li>
           })}
-          <li>({"0:0"}{frameKey / 1000})</li>
+          {frameKey && <li>({"0:0"}{frameKey / 1000})</li>}
         </ul>
       </Card>
     )
@@ -146,7 +151,7 @@ export const VideoAnalyticsBar = (
     { key: string, type: string, dataKey: string, stroke: string, strokeWidth: number, fill: string, stackId?: string }>
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="99%" height="99%">
       <ContainerComponent data={flatData}
         margin={{ left: 0, right: 0, top: 0, bottom: -12 }}
         onClick={(e) => {
@@ -180,7 +185,6 @@ export const VideoAnalyticsBar = (
   );
 }
 
-
 export const ImageAnalyticsBar = (
   { data, tagIdMap, graphType }:
     {
@@ -189,7 +193,70 @@ export const ImageAnalyticsBar = (
       graphType?: 'graph-1' | 'graph-2'
     }) => {
   console.log("image analytics", data, tagIdMap, graphType)
-  return <div style={{ background: graphType === 'graph-1' ? "green" : "red", width: "100%" }}>Image: {graphType}</div>
+  const tagNames = Object.keys(tagIdMap)
+
+  if (graphType === 'graph-1') {
+    return (
+      <ResponsiveContainer width="99%" height="99%">
+        <BarChart data={[data]}>
+          <CartesianGrid strokeDasharray="1 5" />
+          <Legend />
+          {tagNames.map(tagName => {
+            const color = TagColours[tagIdMap[tagName] % TagColours.length]
+            return <Bar key={tagName} dataKey={tagName} fill={color} />
+          })}
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  }
+  const pieData = tagNames.map(name => {
+    return { name, value: data[name] }
+  })
+
+  console.log("pie-data")
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart >
+        <Pie
+          data={pieData}
+          cx="50%"
+          cy="50%"
+          fill="#8884d8"
+          dataKey="value"
+          innerRadius={20}
+          outerRadius={40}
+          paddingAngle={5}
+        >
+          {pieData.map(entry => {
+            return (
+              <Cell
+                key={`cell-${entry.name}`}
+                fill={TagColours[tagIdMap[entry.name] % TagColours.length]}
+              />
+            )
+          })}
+
+        </Pie>
+        <Legend
+          layout="vertical" verticalAlign="top" align="left"
+          content={(props) => {
+            const { payload } = props;
+            return (
+              <ul>
+                {payload?.map((entry) => {
+                  // Note: Need to typecast as any as typescript complains that "percent" does not exist on entry.payload, when it does
+                  const percent = ((entry?.payload as any)?.percent * 100)
+                  const displayedPercent = !isNaN(Number(percent)) ? `(${Number(percent).toFixed(2)}%)` : null
+                  return <li style={{ color: entry.color }} key={`item-${entry.value}`}>{entry.value}: {data[entry.value]} {displayedPercent}</li>
+                })}
+              </ul>
+            )
+          }}
+        />
+      </PieChart>
+    </ResponsiveContainer>
+  );
 
 }
 
