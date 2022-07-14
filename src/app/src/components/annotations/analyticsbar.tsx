@@ -192,7 +192,6 @@ export const ImageAnalyticsBar = (
       tagIdMap: Record<string, number>,
       graphType?: 'graph-1' | 'graph-2'
     }) => {
-  console.log("image analytics", data, tagIdMap, graphType)
   const tagNames = Object.keys(tagIdMap)
 
   if (graphType === 'graph-1') {
@@ -214,7 +213,6 @@ export const ImageAnalyticsBar = (
     return { name, value: data[name] }
   })
 
-  console.log("pie-data")
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart >
