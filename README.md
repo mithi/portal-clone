@@ -1,4 +1,7 @@
-Cloned from https://github.com/datature/portal/ did some modifications and then pushed to this repo
+1. Cloned from https://github.com/datature/portal/, did some modifications and then pushed to this repo
+2. Here's how I set my development environment on Digital Ocean (I had problems with OpenCV and Tensorflow on Apple's new M1 chip): https://gist.github.com/mithi/eb868c0824ce84e32b927a88e61011fb
+3. Here's a video demonstrating my modifications: https://www.youtube.com/watch?v=u5ABSTLmAKw
+4. Some screenshots: https://github.com/mithi/portal-clone/issues/1
 
 # Portal
 
