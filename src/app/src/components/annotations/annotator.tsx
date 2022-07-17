@@ -150,7 +150,16 @@ interface AnnotatorState {
   };
   currAnnotationPlaybackId: number;
   bottomSidebarMode: 'image' | 'graph-1' | 'graph-2';
-  analyticsData?: any
+  analyticsData?: {
+    currentDataType: string
+    image?: {
+      data: any
+    }
+    video?: {
+      frameKey: string,
+      data: any
+    }
+  }
 }
 
 /**
@@ -1558,9 +1567,6 @@ AnnotatorState
     );
   }
 
-  // timeline-bar-chart
-  // doughnut-chart
-  // 
   render(): JSX.Element {
     /* Prefix for Dynamic Styling of Collapsing Image List */
     const collapsedButtonTheme = this.props.useDarkTheme ? "" : "light-";
@@ -1573,9 +1579,10 @@ AnnotatorState
 
     const { bottomSidebarMode, confidence: confidenceThreshold, tagInfo: { tags } } = this.state
     const isAnalyticsMode = bottomSidebarMode === 'graph-1' || bottomSidebarMode === 'graph-2'
-    const noData = this.state?.analyticsData == null
+    const analyticsData = this.state.analyticsData
+    const noData = analyticsData == null
     const analyticsType = this.state?.analyticsData?.currentDataType
-    const analyzeVideo = isAnalyticsMode && analyticsType === 'video'
+    const analyzeVideo = isAnalyticsMode && analyticsType === 'video' && analyticsData?.video?.frameKey && analyticsData?.video?.data?.frames
     const analyzeImage = isAnalyticsMode && analyticsType === 'image'
 
     return (
@@ -1620,12 +1627,12 @@ AnnotatorState
               {analyzeVideo && <VideoAnalyticsBar
                 tagIdMap={tags}
                 graphType={bottomSidebarMode}
-                currentFrameKey={this.state.analyticsData.video.frameKey}
+                currentFrameKey={analyticsData?.video?.frameKey}
                 frameItemCounts={
                   getFrameItemCounts({
                     tags,
                     confidenceThreshold,
-                    frames: this.state.analyticsData.video.data.frames
+                    frames: analyticsData?.video?.data?.frames || []
                   })}
                 callback={(n: number) => {
                   const videoElement = this.videoOverlay?.getElement();
@@ -1641,11 +1648,11 @@ AnnotatorState
                 data={getFrameItemCounts({
                   tags,
                   confidenceThreshold,
-                  frames: [this.state.analyticsData.image.data]
+                  frames: analyticsData?.image?.data ? [analyticsData?.image?.data] : []
                 })[0].itemCounts /* TODO: getFrameItemCounts should be refactored for better API */}
               />}
               {isAnalyticsMode && !noData && !analyzeImage && !analyzeVideo
-                && <UnrecognizedDataError dataType={analyticsType} />}
+                && <UnrecognizedDataError dataType={analyticsType || 'undefined'} />}
             </Card>
           </div>
 

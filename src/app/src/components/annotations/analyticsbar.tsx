@@ -24,6 +24,9 @@ import {
   NameType,
 } from 'recharts/src/component/DefaultTooltipContent';
 
+const getColor = (tagName: string, tagIdMap: Record<string, number>) => TagColours[tagIdMap[tagName] % TagColours.length]
+
+
 export const NoData = () => <p>No data to analyze yet. Click the analyze button ('A') to infer data.</p>
 
 export const UnrecognizedDataError = ({ dataType }: { dataType: string }) => {
@@ -137,7 +140,7 @@ export const VideoAnalyticsBar = (
     graphType,
     callback
   }: {
-    currentFrameKey: string,
+    currentFrameKey?: string,
     frameItemCounts: FrameItemCounts[],
     tagIdMap: Record<string, number>,
     graphType?: 'graph-1' | 'graph-2',
@@ -165,7 +168,7 @@ export const VideoAnalyticsBar = (
         <XAxis dataKey={"frameKey"} tick={(props) => <CustomizedAxisTick {...props} />} />
         <Legend layout="vertical" verticalAlign="top" align="left" />
         {tagNames.map((tagName) => {
-          const color = TagColours[tagIdMap[tagName] % TagColours.length]
+          const color = getColor(tagName, tagIdMap)
           return (
             <ChildComponent
               key={tagName}
@@ -179,7 +182,8 @@ export const VideoAnalyticsBar = (
             />
           )
         })}
-        <ReferenceLine x={currentFrameKey} strokeWidth={4} stroke={"red"} />
+        {currentFrameKey &&
+          <ReferenceLine x={currentFrameKey} strokeWidth={4} stroke={"red"} />}
       </ContainerComponent>
     </ResponsiveContainer>
   );
@@ -188,7 +192,7 @@ export const VideoAnalyticsBar = (
 export const ImageAnalyticsBar = (
   { data, tagIdMap, graphType }:
     {
-      data: any,
+      data: Record<string, number>,
       tagIdMap: Record<string, number>,
       graphType?: 'graph-1' | 'graph-2'
     }) => {
@@ -201,7 +205,7 @@ export const ImageAnalyticsBar = (
           <CartesianGrid strokeDasharray="1 5" />
           <Legend />
           {tagNames.map(tagName => {
-            const color = TagColours[tagIdMap[tagName] % TagColours.length]
+            const color = getColor(tagName, tagIdMap)
             return <Bar key={tagName} dataKey={tagName} fill={color} />
           })}
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
@@ -230,7 +234,7 @@ export const ImageAnalyticsBar = (
             return (
               <Cell
                 key={`cell-${entry.name}`}
-                fill={TagColours[tagIdMap[entry.name] % TagColours.length]}
+                fill={getColor(entry.name, tagIdMap)}
               />
             )
           })}
